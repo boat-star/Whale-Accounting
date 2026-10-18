@@ -1,7 +1,7 @@
 # 依赖与构建产物
 node_modules/
 dist/
-build/icons/
+app/build/icons/
 *.tsbuildinfo
 
 # 免安装发布目录（安装包见 dist-release/）

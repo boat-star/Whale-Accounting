@@ -3,7 +3,7 @@ import sleepImg from "../assets/mascot-sleep.png";
 import headImg from "../assets/mascot-head.png";
 import logoImg from "../assets/logo.png";
 
-const BODY_RATIO = 514 / 720;
+const BODY_RATIO = 693 / 720;
 
 /**
  * 鲸鱼娘形象。

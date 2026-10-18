@@ -30,6 +30,13 @@
 |------|------|
 | ![预算](docs/images/budget.png) | ![账户](docs/images/accounts.png) |
 
+### 彩蛋：鲸元券
+
+净资产为正的时候，概览页右下角会多一张 `鲸元券`——面额 100000000 token，
+盖着「Deepseek token 银行」的章。只用于卖萌，不能提现，也不会出现在报表里。
+
+![鲸元券](docs/images/note.png)
+
 ## 下载与安装
 
 在 [`dist-release/`](dist-release/) 目录里：

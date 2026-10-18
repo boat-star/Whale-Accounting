@@ -375,8 +375,8 @@ textarea.input {
 }
 .hello-mascot {
   position: absolute;
-  right: 6px;
-  bottom: -8px;
+  right: 16px;
+  bottom: 2px;
   opacity: 0.96;
   filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.25));
 }
@@ -927,4 +927,19 @@ textarea.input {
   flex: none;
   object-fit: cover;
   box-shadow: 0 4px 10px rgba(12, 38, 66, 0.18);
+}
+
+/* 鲸元券：概览页的彩蛋卡片 */
+.note-card {
+  overflow: hidden;
+}
+.note-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 16px 16px 0 0;
+}
+.note-cap {
+  padding: 10px 14px 13px;
+  border-top: 1px dashed color-mix(in srgb, var(--sky) 40%, transparent);
 }

@@ -6,6 +6,7 @@ import type { BudgetView, CategoryStat, Overview as Ov, TxnView } from "../lib/t
 import { RingChart, Legend } from "../components/Charts";
 import { Mascot } from "../components/Mascot";
 import { Icon } from "../components/Icons";
+import noteImg from "../assets/note.jpg";
 
 export function OverviewPage() {
   const { month, settings, version, openTxn, toast } = useApp();
@@ -278,6 +279,20 @@ export function OverviewPage() {
               </div>
             </div>
           </div>
+
+          {(ov?.net_asset_minor ?? 0) > 0 && (
+            <div className="card note-card">
+              <div className="card-body" style={{ padding: 0 }}>
+                <img src={noteImg} alt="鲸元券" className="note-img" />
+                <div className="note-cap">
+                  <div style={{ fontWeight: 600, fontSize: 12.5 }}>本月结余已兑换</div>
+                  <div className="hint">
+                    净资产 {fmtMoney(ov?.net_asset_minor ?? 0)} · 面额 100000000 token
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
