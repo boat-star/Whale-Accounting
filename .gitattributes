@@ -1,0 +1,8 @@
+* text=auto eol=lf
+
+# 二进制发布物走 Git LFS（安装包约 100 MB，超过普通 Git 的单文件上限）
+*.exe filter=lfs diff=lfs merge=lfs -text
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.png binary
+*.ico binary
+*.docx binary
