@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
 import { useApp } from "../lib/app-context";
 import { fmtMoney, monthRange, todayStr, dayLabel } from "../lib/format";
@@ -42,21 +42,70 @@ export function OverviewPage() {
     [stats]
   );
 
-  const greet = useMemo(() => {
+  const today = ov?.today_expense_minor ?? 0;
+  const [ringHover, setRingHover] = useState<number | null>(null);
+
+  const { greet, subtitle } = useMemo(() => {
     const h = new Date().getHours();
-    if (h < 6) return "这么晚还没睡呀";
-    if (h < 11) return "早上好";
-    if (h < 14) return "中午好";
-    if (h < 18) return "下午好";
-    return "晚上好";
-  }, []);
+    const phase =
+      h < 5 ? "night" : h < 9 ? "morning" : h < 12 ? "forenoon" : h < 14 ? "noon" : h < 18 ? "afternoon" : h < 22 ? "evening" : "late";
+    const g = {
+      night: "这么晚还没睡呀",
+      morning: "早上好",
+      forenoon: "上午好",
+      noon: "中午好",
+      afternoon: "下午好",
+      evening: "晚上好",
+      late: "夜深了",
+    }[phase];
+
+    // 副文案：先看今天花得怎么样，再按时段挑一句话
+    const spent = today > 0;
+    const table: Record<string, [string, string]> = {
+      night: ["这个点还在记账，记完就去睡吧。", "今天还没花钱。早睡比省钱更难，去睡吧。"],
+      morning: ["早饭记上了吗？一天的账从早餐开始。", "今天还没开张，先吃早饭，账待会儿再记。"],
+      forenoon: ["上午的账别攒着，想起来就记一笔。", "上午一分没花，鱼片你今天很克制。"],
+      noon: ["中午了，吃完顺手把这笔记上。", "还没开张，午饭这笔记一下吧。"],
+      afternoon: ["下午犯困的话，记完这笔去喝口水。", "下午还没花钱，就这么保持到下班。"],
+      evening: ["今天的花销都在这里了，记完就安心去吃饭吧。", "今天一分没花，晚饭可以加个菜。"],
+      late: ["今天的账收个尾，就去睡吧。", "今天没花钱，睡前不用再想账的事了。"],
+    };
+    let sub = table[phase][spent ? 0 : 1];
+    if (today > 50000) sub = "今天花得有点多…要不要翻翻明细，看看是哪一笔？";
+    return { greet: g, subtitle: sub };
+  }, [today]);
+
+  // 点一下鲸鱼娘：跳一下 + 说一句话
+  const [bubble, setBubble] = useState<string | null>(null);
+  const [popping, setPopping] = useState(false);
+  const bubbleTimer = useRef<number | undefined>(undefined);
+  const popTimer = useRef<number | undefined>(undefined);
+
+  const poke = () => {
+    const lines = [
+      "记账这种事，攒着会忘的。",
+      "我盯着你呢，别乱花。",
+      "今天的账，今天记。",
+      "记完这笔，我去吃白米饭。",
+      "别看我，看你的余额。",
+      "鲸元券概不赊账。",
+    ];
+    setBubble(lines[Math.floor(Math.random() * lines.length)]);
+    setPopping(false);
+    window.clearTimeout(popTimer.current);
+    window.clearTimeout(bubbleTimer.current);
+    popTimer.current = window.setTimeout(() => setPopping(true), 16);
+    bubbleTimer.current = window.setTimeout(() => {
+      setBubble(null);
+      setPopping(false);
+    }, 2400);
+  };
 
   const totalBudget = budgets.find((b) => !b.category_id);
   const budgetPct = totalBudget
     ? Math.min((totalBudget.used_minor / Math.max(totalBudget.amount_minor, 1)) * 100, 100)
     : 0;
 
-  const today = ov?.today_expense_minor ?? 0;
 
   const daysLeft = useMemo(() => {
     const [y, m] = month.split("-").map(Number);
@@ -79,13 +128,7 @@ export function OverviewPage() {
               今天
             </span>
           </div>
-          <div className="sub">
-            {today === 0
-              ? "今天还一分钱没花，鱼片你有点厉害哦。"
-              : today > 50000
-              ? "今天花得有点多…要不要去看看明细，找找是哪一笔？"
-              : "今天的花销都在这里了，记完就安心去吃饭吧。"}
-          </div>
+          <div className="sub">{subtitle}</div>
           <button
             className="btn"
             style={{
@@ -99,10 +142,19 @@ export function OverviewPage() {
             <Icon name="plus" size={15} /> 记一笔
             <span style={{ opacity: 0.7, marginLeft: 4 }}>Ctrl N</span>
           </button>
-          <div className="hello-mascot">
+          <div
+            className="hello-mascot"
+            onClick={settings.mascot === "on" ? poke : undefined}
+            title={settings.mascot === "on" ? "点我一下" : undefined}
+            role="button"
+            aria-label="鲸鱼娘"
+          >
             {settings.mascot === "on" && (
-              <Mascot size={148} mood={today > 50000 ? "sleep" : "happy"} />
+              <div className={"mascot-float" + (popping ? " pop" : "")}>
+                <Mascot size={148} mood={today > 50000 ? "sleep" : "happy"} />
+              </div>
             )}
+            {bubble && <div className="mascot-bubble">{bubble}</div>}
           </div>
         </div>
 
@@ -141,8 +193,15 @@ export function OverviewPage() {
                 <RingChart
                   data={ring}
                   centerValue={fmtMoney(ov?.month_expense_minor ?? 0)}
+                  active={ringHover}
+                  onActive={setRingHover}
                 />
-                <Legend data={ring} total={ring.reduce((s, d) => s + d.value, 0)} />
+                <Legend
+                  data={ring}
+                  total={ring.reduce((s, d) => s + d.value, 0)}
+                  active={ringHover}
+                  onActive={setRingHover}
+                />
               </div>
             </div>
           </div>

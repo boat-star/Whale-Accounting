@@ -1,24 +1,38 @@
+import { useState } from "react";
 import type { CategoryStat } from "../lib/types";
 import { fmtMoney } from "../lib/format";
 
+type Slice = { name: string; value: number; color: string };
+
+/**
+ * 环形图。悬停某一段时：该段加粗外扩、其余半透明，圆心切换成这一类的金额与占比。
+ * active / onActive 由外部持有，图例可以联动。
+ */
 export function RingChart({
   data,
   size = 138,
   thickness = 17,
   centerLabel = "本月支出",
   centerValue,
+  active = null,
+  onActive,
 }: {
-  data: { name: string; value: number; color: string }[];
+  data: Slice[];
   size?: number;
   thickness?: number;
   centerLabel?: string;
   centerValue?: string;
+  active?: number | null;
+  onActive?: (i: number | null) => void;
 }) {
   const total = data.reduce((s, d) => s + d.value, 0);
   const r = (size - thickness) / 2;
   const c = 2 * Math.PI * r;
-  let acc = 0;
   const gap = data.length > 1 ? 2.4 : 0;
+  let acc = 0;
+
+  const cur = active !== null ? data[active] : null;
+  const pct = cur && total > 0 ? Math.round((cur.value / total) * 100) : 0;
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
@@ -34,46 +48,71 @@ export function RingChart({
         {total > 0 &&
           data.map((d, i) => {
             const len = (d.value / total) * c;
+            const on = active === i;
+            const dim = active !== null && !on;
             const el = (
               <circle
                 key={i}
                 cx={size / 2}
                 cy={size / 2}
-                r={r}
+                r={r + (on ? 3 : 0)}
                 stroke={d.color}
-                strokeWidth={thickness}
+                strokeWidth={on ? thickness + 8 : thickness}
                 fill="none"
                 strokeLinecap="round"
                 strokeDasharray={`${Math.max(len - gap, 0.8)} ${c}`}
                 strokeDashoffset={-acc}
-                style={{ transition: "stroke-dasharray .5s ease" }}
+                opacity={dim ? 0.28 : 1}
+                style={{
+                  transition:
+                    "stroke-width .18s ease, r .18s ease, opacity .18s ease",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={() => onActive?.(i)}
+                onMouseLeave={() => onActive?.(null)}
               />
             );
             acc += len;
             return el;
           })}
       </g>
-      <text
-        x="50%"
-        y="46%"
-        textAnchor="middle"
-        fontSize="11"
-        fill="var(--muted)"
-        fontFamily="inherit"
-      >
-        {centerLabel}
-      </text>
-      <text
-        x="50%"
-        y="60%"
-        textAnchor="middle"
-        fontSize="15.5"
-        fontWeight="700"
-        fill="var(--ink)"
-        fontFamily="inherit"
-      >
-        {centerValue ?? fmtMoney(total)}
-      </text>
+
+      <g style={{ pointerEvents: "none" }}>
+        <text
+          x="50%"
+          y={cur ? "40%" : "46%"}
+          textAnchor="middle"
+          fontSize="11"
+          fill={cur ? cur.color : "var(--muted)"}
+          fontFamily="inherit"
+          style={{ transition: "fill .18s ease" }}
+        >
+          {cur ? cur.name : centerLabel}
+        </text>
+        <text
+          x="50%"
+          y={cur ? "55%" : "60%"}
+          textAnchor="middle"
+          fontSize={cur ? "16" : "15.5"}
+          fontWeight="700"
+          fill="var(--ink)"
+          fontFamily="inherit"
+        >
+          {cur ? fmtMoney(cur.value) : centerValue ?? fmtMoney(total)}
+        </text>
+        {cur && (
+          <text
+            x="50%"
+            y="70%"
+            textAnchor="middle"
+            fontSize="10.5"
+            fill="var(--muted)"
+            fontFamily="inherit"
+          >
+            占 {pct}%
+          </text>
+        )}
+      </g>
     </svg>
   );
 }
@@ -81,18 +120,29 @@ export function RingChart({
 export function Legend({
   data,
   total,
+  active = null,
+  onActive,
 }: {
-  data: { name: string; value: number; color: string }[];
+  data: Slice[];
   total: number;
+  active?: number | null;
+  onActive?: (i: number | null) => void;
 }) {
   return (
     <div className="legend">
-      {data.slice(0, 6).map((d) => (
-        <div className="legend-row" key={d.name}>
+      {data.slice(0, 6).map((d, i) => (
+        <div
+          className={"legend-row" + (active === i ? " on" : "")}
+          key={d.name}
+          onMouseEnter={() => onActive?.(i)}
+          onMouseLeave={() => onActive?.(null)}
+        >
           <span className="dot" style={{ background: d.color }} />
           <span className="nm">{d.name}</span>
           <span className="val">
-            {total > 0 ? Math.round((d.value / total) * 100) : 0}%
+            {active === i
+              ? fmtMoney(d.value)
+              : `${total > 0 ? Math.round((d.value / total) * 100) : 0}%`}
           </span>
         </div>
       ))}
@@ -101,6 +151,19 @@ export function Legend({
   );
 }
 
+const WEEK = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+
+function labelOf(date: string) {
+  const parts = date.split("-").map(Number);
+  if (parts.length === 2) return `${parts[1]} 月`;
+  const [y, m, d] = parts;
+  const w = WEEK[new Date(y, m - 1, d).getDay()];
+  return `${m} 月 ${d} 日 · ${w}`;
+}
+
+/**
+ * 折线图。鼠标移动时按横向位置吸附到最近的数据点，显示游标圆点、竖向参考线与日期金额浮层。
+ */
 export function TrendChart({
   points,
   height = 168,
@@ -108,6 +171,8 @@ export function TrendChart({
   points: { date: string; value: number }[];
   height?: number;
 }) {
+  const [idx, setIdx] = useState<number | null>(null);
+
   const W = 620;
   const H = 160;
   const pad = 6;
@@ -118,45 +183,88 @@ export function TrendChart({
   const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
   const area = `${line} L${(pts[pts.length - 1]?.[0] ?? W).toFixed(1)} ${H} L${pad} ${H} Z`;
 
+  const hit = idx !== null ? pts[idx] : null;
+  const hovered = idx !== null ? points[idx] : null;
+
+  function move(e: React.MouseEvent<HTMLDivElement>) {
+    if (points.length === 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+    const i = Math.round(ratio * (points.length - 1));
+    setIdx(i);
+  }
+
+  const leftPct = hit ? (hit[0] / W) * 100 : 0;
+  const topPct = hit ? (hit[1] / H) * 100 : 0;
+  const tipLeft = Math.min(Math.max(leftPct, 12), 88);
+
   return (
     <div>
-      <svg
-        width="100%"
-        height={height}
-        viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="none"
+      <div
+        className="trend-plot"
+        style={{ height }}
+        onMouseMove={move}
+        onMouseLeave={() => setIdx(null)}
       >
-        <defs>
-          <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#1d7ad1" stopOpacity="0.28" />
-            <stop offset="1" stopColor="#1d7ad1" stopOpacity="0.01" />
-          </linearGradient>
-        </defs>
-        {[0.25, 0.5, 0.75].map((t) => (
-          <line
-            key={t}
-            x1={0}
-            x2={W}
-            y1={H * t}
-            y2={H * t}
-            stroke="var(--line)"
-            strokeDasharray="4 6"
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-        {points.length > 1 && <path d={area} fill="url(#tg)" />}
-        {points.length > 1 && (
-          <path
-            d={line}
-            fill="none"
-            stroke="#1d7ad1"
-            strokeWidth="2.2"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            vectorEffect="non-scaling-stroke"
-          />
+        <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#1d7ad1" stopOpacity="0.28" />
+              <stop offset="1" stopColor="#1d7ad1" stopOpacity="0.01" />
+            </linearGradient>
+          </defs>
+          {[0.25, 0.5, 0.75].map((t) => (
+            <line
+              key={t}
+              x1={0}
+              x2={W}
+              y1={H * t}
+              y2={H * t}
+              stroke="var(--line)"
+              strokeDasharray="4 6"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+          {points.length > 1 && <path d={area} fill="url(#tg)" />}
+          {points.length > 1 && (
+            <path
+              d={line}
+              fill="none"
+              stroke="#1d7ad1"
+              strokeWidth="2.2"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+          {hit && (
+            <line
+              x1={hit[0]}
+              x2={hit[0]}
+              y1={2}
+              y2={H}
+              stroke="#1d7ad1"
+              strokeOpacity="0.35"
+              strokeDasharray="3 4"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+        </svg>
+
+        {hit && (
+          <>
+            <span
+              className="trend-dot"
+              style={{ left: `${leftPct}%`, top: `${topPct}%` }}
+            />
+            <div className="trend-tip" style={{ left: `${tipLeft}%`, top: `${topPct}%` }}>
+              <span className="d">{hovered ? labelOf(hovered.date) : ""}</span>
+              <span className="v num">{fmtMoney(hovered?.value ?? 0)}</span>
+            </div>
+          </>
         )}
-      </svg>
+      </div>
+
       <div
         style={{
           display: "flex",
