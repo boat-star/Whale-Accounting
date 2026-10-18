@@ -33,8 +33,8 @@ Section "安装" SecMain
   SetOutPath "$INSTDIR"
   File /r "release\鲸鱼记账\*.*"
   CreateDirectory "$SMPROGRAMS\鲸鱼记账"
-  CreateShortcut "$SMPROGRAMS\鲸鱼记账\鲸鱼记账.lnk" "$INSTDIR\鲸鱼记账.exe"
-  CreateShortcut "$DESKTOP\鲸鱼记账.lnk" "$INSTDIR\鲸鱼记账.exe"
+  CreateShortcut "$SMPROGRAMS\鲸鱼记账\鲸鱼记账.lnk" "$INSTDIR\鲸鱼记账.exe" "" "$INSTDIR\鲸鱼记账.exe" 0
+  CreateShortcut "$DESKTOP\鲸鱼记账.lnk" "$INSTDIR\鲸鱼记账.exe" "" "$INSTDIR\鲸鱼记账.exe" 0
   WriteUninstaller "$INSTDIR\卸载鲸鱼记账.exe"
 
   WriteRegStr HKCU "Software\WhaleLedger" "InstallDir" "$INSTDIR"
