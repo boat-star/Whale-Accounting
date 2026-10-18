@@ -75,15 +75,69 @@ function persistNow() {
   fs.renameSync(tmp, dbFile);
 }
 
+function stamp() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(
+    d.getMinutes()
+  )}${p(d.getSeconds())}`;
+}
+
 async function init(file, wasmDir) {
   SQL = await initSqlJs({ locateFile: (f) => path.join(wasmDir, f) });
   dbFile = file;
-  db = fs.existsSync(file) && fs.statSync(file).size > 0
-    ? new SQL.Database(fs.readFileSync(file))
-    : new SQL.Database();
+  const exists = fs.existsSync(file) && fs.statSync(file).size > 0;
+  if (exists) {
+    try {
+      db = new SQL.Database(fs.readFileSync(file));
+      db.exec("SELECT count(*) FROM sqlite_master");
+    } catch (e) {
+      // 读不出来时绝不能静默重建：把坏文件原地留档，便于事后抢救
+      try {
+        fs.renameSync(file, `${file}.broken-${stamp()}`);
+      } catch {}
+      db = new SQL.Database();
+    }
+  } else {
+    db = new SQL.Database();
+  }
   run("PRAGMA foreign_keys = ON");
   migrate();
   return db;
+}
+
+/** 用指定文件替换当前内存库（用于「从备份恢复」）。 */
+function reload(file) {
+  db = new SQL.Database(fs.readFileSync(file));
+  dbFile = file;
+  run("PRAGMA foreign_keys = ON");
+  return db;
+}
+
+/**
+ * 每天首次启动自动留一份快照，最多保留 keep 份。
+ * 空账本不占备份位，避免刚装完就生成一堆空备份。
+ */
+function autoBackup(dir, keep = 7, force = false) {
+  const src = path.join(dir, "whale.db");
+  if (!fs.existsSync(src)) return null;
+  if (val("SELECT COUNT(*) FROM txn") === 0) return null;
+
+  const bdir = path.join(dir, "backups");
+  fs.mkdirSync(bdir, { recursive: true });
+  const target = path.join(bdir, `自动备份-${stamp().slice(0, 8)}.db`);
+  if (force || !fs.existsSync(target)) fs.copyFileSync(src, target);
+
+  const autos = fs
+    .readdirSync(bdir)
+    .filter((f) => f.startsWith("自动备份-") && f.endsWith(".db"))
+    .sort();
+  while (autos.length > keep) {
+    try {
+      fs.unlinkSync(path.join(bdir, autos.shift()));
+    } catch {}
+  }
+  return target;
 }
 
 function migrate() {
@@ -620,4 +674,13 @@ api.stats = () => ({
   category_count: val("SELECT COUNT(*) c FROM category WHERE archived=0"),
 });
 
-module.exports = { init, api, persistNow, monthBounds, KIND_EXPENSE, KIND_INCOME };
+module.exports = {
+  init,
+  reload,
+  autoBackup,
+  api,
+  persistNow,
+  monthBounds,
+  KIND_EXPENSE,
+  KIND_INCOME,
+};

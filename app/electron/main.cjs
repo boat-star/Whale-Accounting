@@ -136,6 +136,26 @@ const handlers = {
     return target;
   },
 
+  backup_restore: async ({ path: file } = {}) => {
+    if (!file || !fs.existsSync(file)) throw new Error("备份文件不存在");
+    db.persistNow();
+    const dir = path.join(dataDir, "backups");
+    fs.mkdirSync(dir, { recursive: true });
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    const guard = `恢复前-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(
+      d.getHours()
+    )}${p(d.getMinutes())}${p(d.getSeconds())}.db`;
+    const current = path.join(dataDir, "whale.db");
+    if (fs.existsSync(current)) fs.copyFileSync(current, path.join(dir, guard));
+
+    const tmp = path.join(dataDir, "whale.db.tmp");
+    fs.copyFileSync(file, tmp);
+    fs.renameSync(tmp, current);
+    db.reload(current);
+    return true;
+  },
+
   backup_list: async () => {
     const dir = path.join(dataDir, "backups");
     if (!fs.existsSync(dir)) return [];
@@ -364,6 +384,12 @@ if (!gotLock) {
       return;
     }
 
+    try {
+      db.autoBackup(dataDir);
+    } catch (e) {
+      log("auto backup failed:", e.message);
+    }
+
     log("db ready");
 
     ipcMain.handle("api", async (_e, { cmd, args }) => {
@@ -407,11 +433,16 @@ if (!gotLock) {
     });
   });
 
-  app.on("window-all-closed", () => app.quit());
-
+  // 退出前把当天快照刷新成最新状态，避免只停留在启动那一刻
   app.on("before-quit", () => {
     try {
       db.persistNow();
-    } catch {}
+      db.autoBackup(dataDir, 7, true);
+    } catch (e) {
+      log("quit backup failed:", e.message);
+    }
   });
+
+  app.on("window-all-closed", () => app.quit());
+
 }

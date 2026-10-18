@@ -55,7 +55,7 @@ Section "Uninstall"
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\WhaleLedger"
   DeleteRegKey HKCU "Software\WhaleLedger"
 
-  MessageBox MB_YESNO|MB_ICONQUESTION "是否同时删除你的记账数据？$\r$\n$\r$\n数据位置：%APPDATA%\com.whaleledger.app$\r$\n选「否」会保留数据，以后重装还能接着用。" IDNO KeepData
+  MessageBox MB_YESNO|MB_ICONEXCLAMATION|MB_DEFBUTTON2 "是否连同记账数据一起删除？$\r$\n$\r$\n数据位置：%APPDATA%\com.whaleledger.app$\r$\n$\r$\n建议选「否」：数据会保留，重装后可以接着用。" IDNO KeepData
   RMDir /r "$APPDATA\com.whaleledger.app"
   KeepData:
 SectionEnd

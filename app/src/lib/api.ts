@@ -65,6 +65,7 @@ export const api = {
 
   backupCreate: () => call<string>("backup_create"),
   backupList: () => call<BackupItem[]>("backup_list"),
+  backupRestore: (path: string) => call<boolean>("backup_restore", { path }),
   settingsGet: () => call<AppSettings>("settings_get"),
   settingsSet: (input: AppSettings) => call<void>("settings_set", { input }),
   dataStats: () => call<DataStats>("data_stats"),

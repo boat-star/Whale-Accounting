@@ -78,6 +78,24 @@ export function SettingsPage() {
     }
   }
 
+  async function doRestore(b: BackupItem) {
+    if (
+      !window.confirm(
+        `用「${b.name}」覆盖当前账本？\n\n当前数据会先自动存一份到备份目录，恢复后窗口会重新载入。`
+      )
+    )
+      return;
+    try {
+      setBusy("restore");
+      await api.backupRestore(b.path);
+      toast("已恢复，正在重新载入…");
+      window.setTimeout(() => window.location.reload(), 700);
+    } catch (e) {
+      toast(String(e), true);
+      setBusy("");
+    }
+  }
+
   async function doBackup() {
     try {
       setBusy("backup");
@@ -248,6 +266,13 @@ export function SettingsPage() {
                         <Icon name="database" size={14} />
                         <span style={{ flex: 1, wordBreak: "break-all" }}>{b.name}</span>
                         <span className="hint">{b.size_kb} KB</span>
+                        <button
+                          className="btn ghost sm"
+                          onClick={() => doRestore(b)}
+                          disabled={busy === "restore"}
+                        >
+                          恢复
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -302,7 +327,8 @@ export function SettingsPage() {
                 <li>金额栏能直接算：输入 12.5+8 会记成 20.50</li>
                 <li>信用卡和借款填负数余额，净资产才算得准</li>
                 <li>转账不算支出，还信用卡请用「转账」</li>
-                <li>每周点一次「立即备份」，比什么都稳</li>
+                <li>每天第一次打开会自动留一份快照，保留最近 7 份</li>
+                <li>卸载程序默认不动数据；点「恢复」可以把任意备份换回来</li>
               </ul>
             </div>
           </div>

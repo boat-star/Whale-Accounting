@@ -10,7 +10,7 @@ type Slice = { name: string; value: number; color: string };
  */
 export function RingChart({
   data,
-  size = 138,
+  size = 150,
   thickness = 17,
   centerLabel = "本月支出",
   centerValue,
@@ -26,9 +26,10 @@ export function RingChart({
   onActive?: (i: number | null) => void;
 }) {
   const total = data.reduce((s, d) => s + d.value, 0);
-  const r = (size - thickness) / 2;
+  // 预留外扩余量：悬停时半径 +2、线宽 +8，外沿仍要留在画布内
+  const r = (size - thickness) / 2 - 7;
   const c = 2 * Math.PI * r;
-  const gap = data.length > 1 ? 2.4 : 0;
+  const gap = data.length > 1 ? 3 : 0;
   let acc = 0;
 
   const cur = active !== null ? data[active] : null;
@@ -55,11 +56,11 @@ export function RingChart({
                 key={i}
                 cx={size / 2}
                 cy={size / 2}
-                r={r + (on ? 3 : 0)}
+                r={r + (on ? 2 : 0)}
                 stroke={d.color}
                 strokeWidth={on ? thickness + 8 : thickness}
                 fill="none"
-                strokeLinecap="round"
+                strokeLinecap="butt"
                 strokeDasharray={`${Math.max(len - gap, 0.8)} ${c}`}
                 strokeDashoffset={-acc}
                 opacity={dim ? 0.28 : 1}
