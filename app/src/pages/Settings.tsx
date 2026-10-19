@@ -183,6 +183,26 @@ export function SettingsPage() {
                   {settings.mascot === "on" ? "显示中" : "已隐藏"}
                 </button>
               </div>
+
+              <div className="divider" />
+
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>界面动画</div>
+                  <div className="hint">只在鼠标悬停时动。关掉可省电，笔记本更耐用</div>
+                </div>
+                <button
+                  className="btn sm"
+                  onClick={() =>
+                    saveSettings({
+                      ...settings,
+                      motion: settings.motion === "off" ? "on" : "off",
+                    })
+                  }
+                >
+                  {settings.motion === "off" ? "已省电" : "开启动画"}
+                </button>
+              </div>
             </div>
           </div>
 

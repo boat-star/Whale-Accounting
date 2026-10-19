@@ -651,7 +651,7 @@ api.import_rows = ({ rows, account_id }) => {
 };
 
 api.settings_get = () => {
-  const s = { nickname: "鱼片", theme: "light", mascot: "on" };
+  const s = { nickname: "鱼片", theme: "light", mascot: "on", motion: "on" };
   all("SELECT key,value FROM setting").forEach((r) => {
     if (r.key in s) s[r.key] = r.value;
   });
@@ -659,7 +659,7 @@ api.settings_get = () => {
 };
 
 api.settings_set = ({ input }) => {
-  ["nickname", "theme", "mascot"].forEach((k) => {
+  ["nickname", "theme", "mascot", "motion"].forEach((k) => {
     run(
       "INSERT INTO setting (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
       [k, String(input[k] ?? "")]

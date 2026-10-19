@@ -1068,3 +1068,14 @@ textarea.input {
     animation: none !important;
   }
 }
+
+/* 窗口不在前台时暂停装饰动画；设置里也可以整体关掉 */
+body:not(.is-focused) .mascot-float {
+  animation-play-state: paused;
+}
+html[data-motion="off"] *,
+html[data-motion="off"] *::before,
+html[data-motion="off"] *::after {
+  animation: none !important;
+  transition: none !important;
+}

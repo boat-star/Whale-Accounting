@@ -94,6 +94,7 @@ export interface AppSettings {
   nickname: string;
   theme: string;
   mascot: string;
+  motion: string;
 }
 
 export interface DataStats {

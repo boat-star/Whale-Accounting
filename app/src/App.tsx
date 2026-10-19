@@ -42,6 +42,7 @@ export default function App() {
     nickname: "鱼片",
     theme: "light",
     mascot: "on",
+    motion: "on",
   });
   const [version, setVersion] = useState(0);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -77,6 +78,27 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
   }, [settings.theme]);
+
+  useEffect(() => {
+    document.documentElement.dataset.motion = settings.motion;
+  }, [settings.motion]);
+
+  // 窗口不在前台时停掉常驻动画：桌面端大部分时间都在后台，
+  // 一个 60fps 的装饰动画会让 GPU 引擎持续有占用。
+  useEffect(() => {
+    const sync = () => {
+      document.body.classList.toggle("is-focused", document.hasFocus());
+    };
+    sync();
+    window.addEventListener("focus", sync);
+    window.addEventListener("blur", sync);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      window.removeEventListener("focus", sync);
+      window.removeEventListener("blur", sync);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
